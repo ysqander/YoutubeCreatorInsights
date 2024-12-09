@@ -4,10 +4,12 @@ import { db } from "../db";
 import { users } from "@db/schema";
 import { eq } from "drizzle-orm";
 
+const CALLBACK_URL = 'https://6fe6580e-9322-4fcd-8024-47bd12215911-00-abl5tsi6q8sd.janeway.replit.dev/api/youtube/callback';
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.YOUTUBE_CLIENT_ID,
   process.env.YOUTUBE_CLIENT_SECRET,
-  `${process.env.REPLIT_DOMAINS?.split(',')[0]}/api/youtube/callback`
+  CALLBACK_URL
 );
 
 const youtube = google.youtube('v3');
@@ -32,7 +34,18 @@ export function setupYouTubeRoutes(app: Express) {
     }
 
     try {
-      const { code } = req.query;
+      const { code, error } = req.query;
+
+      if (error) {
+        console.error('OAuth error:', error);
+        return res.redirect('/?error=youtube_auth_failed');
+      }
+
+      if (!code) {
+        console.error('No authorization code received');
+        return res.redirect('/?error=no_auth_code');
+      }
+
       const { tokens } = await oauth2Client.getToken(code as string);
 
       await db
@@ -43,9 +56,10 @@ export function setupYouTubeRoutes(app: Express) {
         })
         .where(eq(users.id, req.user.id));
 
-      res.redirect('/');
+      res.redirect('/?youtube=connected');
     } catch (error) {
-      res.status(500).send("Failed to authenticate with YouTube");
+      console.error('YouTube OAuth error:', error);
+      res.redirect('/?error=youtube_token_failed');
     }
   });
 

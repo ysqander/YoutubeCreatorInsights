@@ -26,17 +26,45 @@ export default function Dashboard() {
     },
   });
 
-  const connectYouTube = async () => {
-    try {
-      window.location.href = "/api/youtube/auth";
-    } catch (error) {
+  const connectYouTube = () => {
+    window.location.href = "/api/youtube/auth";
+  };
+
+  // Handle OAuth callback errors
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const youtube = params.get('youtube');
+
+    if (error) {
+      let message = "Failed to connect YouTube account";
+      if (error === 'youtube_auth_failed') {
+        message = "YouTube authentication was cancelled or failed";
+      } else if (error === 'no_auth_code') {
+        message = "No authorization code received from YouTube";
+      } else if (error === 'youtube_token_failed') {
+        message = "Failed to get YouTube access token";
+      }
+
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to connect YouTube account",
+        description: message,
       });
+
+      // Clear the error from URL
+      window.history.replaceState({}, '', '/');
     }
-  };
+
+    if (youtube === 'connected') {
+      toast({
+        title: "Success",
+        description: "YouTube account connected successfully!",
+      });
+      // Clear the success message from URL
+      window.history.replaceState({}, '', '/');
+    }
+  }, [toast]);
 
   if (channelLoading || videosLoading) {
     return (
