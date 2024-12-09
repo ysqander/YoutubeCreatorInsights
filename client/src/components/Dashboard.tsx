@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import VideoCard from "./VideoCard";
@@ -31,7 +32,7 @@ export default function Dashboard() {
   };
 
   // Handle OAuth callback errors
-  React.useEffect(() => {
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const error = params.get('error');
     const youtube = params.get('youtube');

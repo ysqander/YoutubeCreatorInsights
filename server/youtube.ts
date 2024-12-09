@@ -4,7 +4,11 @@ import { db } from "../db";
 import { users } from "@db/schema";
 import { eq } from "drizzle-orm";
 
-const CALLBACK_URL = 'https://6fe6580e-9322-4fcd-8024-47bd12215911-00-abl5tsi6q8sd.janeway.replit.dev/api/youtube/callback';
+// Get the callback URL from environment or construct it
+const CALLBACK_URL = process.env.YOUTUBE_CALLBACK_URL || 
+  `${process.env.REPL_SLUG ? 
+    `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 
+    'http://localhost:5000'}/api/youtube/callback`;
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.YOUTUBE_CLIENT_ID,
@@ -20,12 +24,22 @@ export function setupYouTubeRoutes(app: Express) {
       return res.status(401).send("Not authenticated");
     }
 
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: ['https://www.googleapis.com/auth/youtube.readonly']
-    });
+    try {
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: ['https://www.googleapis.com/auth/youtube.readonly'],
+        prompt: 'consent',
+        include_granted_scopes: true
+      });
 
-    res.redirect(authUrl);
+      console.log('Generated auth URL:', authUrl);
+      console.log('Using callback URL:', CALLBACK_URL);
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error('Error generating auth URL:', error);
+      console.error('Current callback URL:', CALLBACK_URL);
+      res.redirect('/?error=youtube_auth_failed');
+    }
   });
 
   app.get("/api/youtube/callback", async (req, res) => {
@@ -131,22 +145,33 @@ export function setupYouTubeRoutes(app: Express) {
         order: 'date',
       });
 
-      const videoIds = response.data.items?.map(item => item.id?.videoId) || [];
+      const videoIds = response.data.items?.map(item => item.id?.videoId).filter(Boolean) as string[];
       
+      if (videoIds.length === 0) {
+        return res.json([]);
+      }
+
       const statsResponse = await youtube.videos.list({
         auth: oauth2Client,
         part: ['statistics'],
         id: videoIds,
       });
 
-      const videos = response.data.items?.map((item, index) => ({
-        id: item.id?.videoId,
-        title: item.snippet?.title,
-        description: item.snippet?.description,
-        thumbnailUrl: item.snippet?.thumbnails?.high?.url,
-        publishedAt: item.snippet?.publishedAt,
-        stats: statsResponse.data.items?.[index]?.statistics,
-      }));
+      const videos = response.data.items?.map((item, index) => {
+        const stats = statsResponse.data.items?.[index]?.statistics;
+        return {
+          id: item.id?.videoId,
+          title: item.snippet?.title,
+          description: item.snippet?.description,
+          thumbnailUrl: item.snippet?.thumbnails?.high?.url,
+          publishedAt: item.snippet?.publishedAt,
+          stats: {
+            views: Number(stats?.viewCount || 0),
+            likes: Number(stats?.likeCount || 0),
+            comments: Number(stats?.commentCount || 0),
+          },
+        };
+      });
 
       res.json(videos);
     } catch (error) {

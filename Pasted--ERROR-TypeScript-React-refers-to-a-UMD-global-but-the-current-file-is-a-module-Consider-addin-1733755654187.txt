@@ -1,0 +1,40 @@
+ ERROR(TypeScript)  'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+ FILE  /home/runner/YouTubeCreatorInsights/client/src/components/Dashboard.tsx:34:3
+
+    32 |
+    33 |   // Handle OAuth callback errors
+  > 34 |   React.useEffect(() => {
+       |   ^^^^^
+    35 |     const params = new URLSearchParams(window.location.search);
+    36 |     const error = params.get('error');
+    37 |     const youtube = params.get('youtube');
+
+ ERROR(TypeScript)  No overload matches this call.
+  Overload 1 of 6, '(params?: Params$Resource$Videos$List | undefined, options?: MethodOptions | undefined): GaxiosPromise<Schema$VideoListResponse>', gave the following error.
+    Type '(string | null | undefined)[]' is not assignable to type 'string[]'.
+      Type 'string | null | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+  Overload 2 of 6, '(callback: BodyResponseCallback<Schema$VideoListResponse>): void', gave the following error.
+    Object literal may only specify known properties, and 'auth' does not exist in type 'BodyResponseCallback<Schema$VideoListResponse>'.
+ FILE  /home/runner/YouTubeCreatorInsights/server/youtube.ts:136:50
+
+    134 |       const videoIds = response.data.items?.map(item => item.id?.videoId) || [];
+    135 |       
+  > 136 |       const statsResponse = await youtube.videos.list({
+        |                                                  ^^^^
+    137 |         auth: oauth2Client,
+    138 |         part: ['statistics'],
+    139 |         id: videoIds,
+
+ ERROR(TypeScript)  Property 'data' does not exist on type 'GaxiosPromise<Readable> & GaxiosPromise<Schema$VideoListResponse> & void'.
+ FILE  /home/runner/YouTubeCreatorInsights/server/youtube.ts:148:30
+
+    146 |         thumbnailUrl: item.snippet?.thumbnails?.high?.url,
+    147 |         publishedAt: item.snippet?.publishedAt,
+  > 148 |         stats: statsResponse.data.items?.[index]?.statistics,
+        |                              ^^^^
+    149 |       }));
+    150 |
+    151 |       res.json(videos);
+
+[TypeScript] Found 3 errors. Watching for file changes.
